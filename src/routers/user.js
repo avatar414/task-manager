@@ -1,7 +1,11 @@
 const express= require('express');
+const multer= require('multer');
+const sharp= require('sharp');
+
 const User= require('../models/user');
 const auth= require('../middleware/auth');
 const router= new express.Router();
+
 
 
 router.post('/users', async (req, res) => {
@@ -10,7 +14,7 @@ router.post('/users', async (req, res) => {
     try{
         await user.save();
         const token= await user.generateAuthToken();
-        (typeof DEBUG !=='undefined') ? console.log('Debug: Create User: ',req.body) : ()=>{};
+        if (typeof DEBUG !=='undefined'){ console.log('Debug: Create User: ',req.body)};
         res.status(201).send({user , token});
     }
     catch(e){
@@ -23,7 +27,7 @@ router.post ('/users/login',async (req,res) => {
     try {
         const user= await User.findByCredentials(req.body.email,req.body.password);
         const token= await user.generateAuthToken();
-        (typeof DEBUG !=='undefined') ? console.log('Debug: Login User: ',req.body) : ()=>{};
+        if (typeof DEBUG !=='undefined'){ console.log('Debug: Login User: ',req.body)};
         res.send({user , token }); //{user : user , token : token}
     }
     catch(e) {
@@ -37,7 +41,7 @@ router.post('/users/logout', auth, async (req, res) => {
             return token.token !== req.token
 
         })
-        (typeof DEBUG !=='undefined') ? console.log('Debug: Logout User: ',req.body) : ()=>{};
+        if (typeof DEBUG !=='undefined'){ console.log('Debug: Logout User: ',req.body)};
         await req.user.save();
         res.send();
     }
@@ -50,7 +54,7 @@ router.post('/users/logoutAll', auth, async (req, res) => {
     try {
         req.user.tokens = [];
         await req.user.save();
-        (typeof DEBUG !=='undefined') ? console.log('Debug: Create User: ',req.body) : ()=>{};
+        if (typeof DEBUG !=='undefined'){ console.log('Debug: Create User: ',req.body)};
         res.send();
     }
     catch (e) {
@@ -72,7 +76,7 @@ router.post('/users/logoutAll', auth, async (req, res) => {
 
 
 router.get('/users/me', auth, async (req,res) => {
-    (typeof DEBUG !=='undefined') ? console.log('Debug: Read Profile: ',req.user) : ()=>{};
+    if (typeof DEBUG !=='undefined'){ console.log('Debug: Read Profile: ',req.user)};
     res.send(req.user);
 });
 
@@ -86,7 +90,6 @@ router.get('/users/me', auth, async (req,res) => {
 //         }
 //         res.send(user);
 //     }
-//     catch(e){
 //         res.status(500).send(e);
 //     }
 // })
@@ -103,7 +106,7 @@ router.patch('/users/me', auth, async (req,res) => {
     try{
         updates.forEach((update) => req.user[update]= req.body[update]) // shorthand no {}
         await req.user.save()
-        (typeof DEBUG !=='undefined') ? console.log(`Debug: Update User: ${req.user}`) : ()=>{};
+        if (typeof DEBUG !=='undefined') { console.log(`Debug: Update User: ${req.user}`)};
         res.send(req.user);
     }
     catch(e){
@@ -114,12 +117,60 @@ router.patch('/users/me', auth, async (req,res) => {
 router.delete('/users/me', auth, async (req,res) => {
     try{
         await req.user.remove();
-        (typeof DEBUG !=='undefined') ? console.log('Debug: Delete User: ',req.user) : ()=>{};
+        if (typeof DEBUG !=='undefined'){ console.log('Debug: Delete User: ',req.user)};
         res.send(req.user);
     }
     catch(e){
         res.status(500).send(e);
     }
+})
+
+const upload= multer({
+//        dest : 'avatars',
+        limits : {
+            fileSize : 1000000 
+         },
+         fileFilter(req, file, cb){
+             // cb(new Error(''));
+             // cb(undefined,true);
+            if(!file.originalname.match(/\.(jpg|jpeg|png)$/)){
+                return cb(new Error('File must be an image, .jpg, .jpeg or .png'));
+            }
+             cb(undefined,true);
+        }
+     
+});
+router.post('/users/me/avatar', auth, upload.single('avatar'),async (req, res) =>{
+    const buffer= await sharp(req.file.buffer).resize({ width : 250, height : 250 }).png().toBuffer();
+    req.user.avatar= buffer;
+
+    await req.user.save();
+    res.send();
+},(err,req,res,next) =>{
+    res.status(400).send({error : err.message})
+})
+
+router.delete('/users/me/avatar', auth, async (req, res) =>{
+    req.user.avatar= undefined;
+    await req.user.save();
+    res.send();
+})
+
+router.get('/users/:id/avatar', async (req,res) => {
+
+    try{
+        const user= await User.findById(req.params.id)
+
+        if(!user || !user.avatar){
+            throw new Error();            
+        }
+        res.set('Content-Type','image/png')
+        res.send(user.avatar)
+    }catch(e){
+        res.status(404).send()
+
+    }
+
 })
 
 module.exports = router;

@@ -21,14 +21,41 @@ router.post('/tasks', auth, async (req, res) => {
     (typeof DEBUG !== 'undefined') ? console.log(`Debug: Create Task: ${task}`) : () => { };
 });
 
+
+//GET tasks/?completed=false
+//GET tasks/?limit=###&skip=###
+//GET tasks?sortBy=createdAt_asc||desc
 router.get('/tasks', auth, async (req, res) => {
+
+    const match= {};
+    const sort= {};
+
+    if(req.query.completed){
+        match.completed= req.query.completed === 'true';
+    }
+
+    if (req.query.sortBy){
+        const parts=  req.query.sortBy.split('_')
+        sort[parts[0]] = (parts[1] === 'desc') ? -1 : 1
+        if (typeof DEBUG !== 'undefined'){console.log(`Debug: Client Sorting: ${req.query.sortBy} ${JSON.stringify(sort)}`)};
+    }
 
     try {
         ////This works too:
         //        const tasks= await Task.find({ owner : req.user._id });
         //        res.send(tasks);
-        await req.user.populate('tasks').execPopulate();
-        (typeof DEBUG !== 'undefined') ? console.log(`Debug: Get Tasks: ${req.user.tasks}`) : () => { };
+//        await req.user.populate('tasks').execPopulate();
+        await req.user.populate({
+            path : 'tasks',
+            match,
+            options : {
+                limit : parseInt(req.query.limit),
+                skip : parseInt(req.query.skip),
+                sort
+
+            }
+        }).execPopulate();
+        if (typeof DEBUG !== 'undefined'){ console.log(`Debug: Get Tasks: ${req.user.tasks}`)};
         res.send(req.user.tasks)
     }
     catch (e) {
@@ -45,7 +72,7 @@ router.get('/tasks/:id', auth, async (req, res) => {
         if (!task) {
             return res.status(404).send();
         }
-        (typeof DEBUG !== 'undefined') ? console.log(`Debug: Get Task: ${task}`) : () => {};        
+        if(typeof DEBUG !== 'undefined'){ console.log(`Debug: Get Task: ${task}`)};
         res.send(task)
     }
     catch (e) {
@@ -72,7 +99,7 @@ router.patch('/tasks/:id', auth, async (req, res) => {
         }
         updates.forEach((update) => task[update] = req.body[update])
         await task.save();
-        (typeof DEBUG !== 'undefined') ? console.log(`Debug: Get Tasks: ${task}`) : () => { };
+        if (typeof DEBUG !== 'undefined'){ console.log(`Debug: Get Tasks: ${task}`)};
         res.send(task);
     }
     catch (e) {
@@ -87,7 +114,7 @@ router.delete('/tasks/:id', auth, async (req, res) => {
         if (!task) {
             return res.status(400).send({ error: "Record not found" });
         }
-        (typeof DEBUG !== 'undefined') ? console.log(`Debug: Delete Task: ${task}`) : () => { };        
+        if (typeof DEBUG !== 'undefined'){ console.log(`Debug: Delete Task: ${task}`)};
         res.send(task)
     }
     catch (e) {

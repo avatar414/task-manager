@@ -9,6 +9,32 @@ const app= express();
 const port= process.env.PORT || 3001
 
 DEBUG = 1;
+
+// const multer= require('multer');
+
+// const upload= multer({
+//     dest : 'images',
+//     limits : {
+//        fileSize : 1000000 
+//     },
+//     fileFilter(req, file, cb){
+//         // cb(new Error(''));
+//         // cb(undefined,true);
+//         if(!file.originalname.match(/\.(doc|docx)$/)){
+//             return cb(new Error('File must be a doc or docx'));
+//         }
+//         cb(undefined,true);
+//     }
+// });
+
+// app.post('/upload', upload.single('upload'),(req,res) => {
+//     res.send();
+// },(err,req,res,next) => {
+//     res.status(400).send({error : err.message});
+// })
+
+
+
 // (typeof DEBUG !=='undefined') ? console.log('Debug: ') : ()=>{};
 
 // // middleware - runs between request and route handler. must be b4 app.use calls
@@ -74,8 +100,8 @@ app.listen(port,() =>{
 // myFunction();
 
 
-const Task= require('./models/task');
-const User= require('./models/user');
+// const Task= require('./models/task');
+// const User= require('./models/user');
 
 // const main= async () => {
 //     // //Task Owner linked to this Task
