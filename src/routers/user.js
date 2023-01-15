@@ -4,6 +4,9 @@ const sharp= require('sharp');
 
 const User= require('../models/user');
 const auth= require('../middleware/auth');
+
+const {sendWelcomeEmail,sendGoodbyeEmail} = require("../emails/account")
+
 const router= new express.Router();
 
 
@@ -13,6 +16,8 @@ router.post('/users', async (req, res) => {
 
     try{
         await user.save();
+        sendWelcomeEmail(user.email,user.name);
+
         const token= await user.generateAuthToken();
         if (typeof DEBUG !=='undefined'){ console.log('Debug: Create User: ',req.body)};
         res.status(201).send({user , token});
@@ -37,7 +42,7 @@ router.post ('/users/login',async (req,res) => {
 
 router.post('/users/logout', auth, async (req, res) => {
     try {
-        req.user.tokens = req.user.tokens.filter((token) => {
+        req.user.tokens= req.user.tokens.filter((token) => {
             return token.token !== req.token
 
         })
@@ -54,7 +59,7 @@ router.post('/users/logoutAll', auth, async (req, res) => {
     try {
         req.user.tokens = [];
         await req.user.save();
-        if (typeof DEBUG !=='undefined'){ console.log('Debug: Create User: ',req.body)};
+        if (typeof DEBUG !=='undefined'){ console.log('Debug: Logout All: ',req.body)};
         res.send();
     }
     catch (e) {
@@ -117,7 +122,9 @@ router.patch('/users/me', auth, async (req,res) => {
 router.delete('/users/me', auth, async (req,res) => {
     try{
         await req.user.remove();
-        if (typeof DEBUG !=='undefined'){ console.log('Debug: Delete User: ',req.user)};
+        sendGoodbyeEmail(req.user.email,req.user.name);
+
+        if (typeof DEBUG !=='undefined'){ console.log('Debug: Delete User: ',req.user, req.user.name, req.user.email)};
         res.send(req.user);
     }
     catch(e){
